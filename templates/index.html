@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en" class="bg-neutral-950 text-white">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Installment Plan | Frylow</title>
+    <script src="https://js.stripe.com/v3/"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='80' font-size='80'>🍟</text></svg>" />
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Navigation Bar -->
+    <nav class="bg-neutral-900 border-b border-neutral-800 py-4 px-6 mb-8">
+        <div class="max-w-6xl mx-auto flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M4 5h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z" fill="#10B981"/>
+                    <path d="M5 11h2v8H5v-8zm4 0h2v8H9v-8zm4 0h2v8h-2v-8zm4 0h2v8h-2v-8z" fill="#10B981"/>
+                    <path d="M4 17h16a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-1a1 1 0 0 1 1-1z" fill="#10B981"/>
+                </svg>
+                <span class="text-xl font-semibold text-white">Frylow App</span>
+            </div>
+            <div class="hidden md:flex space-x-6">
+                <a href="https://dashboard.stripe.com/" class="text-neutral-300 hover:text-white transition-colors">Home</a>
+                <a href="https://dashboard.stripe.com/payments" class="text-neutral-300 hover:text-white transition-colors">Payments</a>
+                <a href="#" class="text-white font-semibold">Installments</a>
+                <a href="https://support.stripe.com/" class="text-neutral-300 hover:text-white transition-colors">Help</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="min-h-screen flex items-center justify-center px-4 -mt-20">
+        <div class="w-full max-w-xl bg-neutral-900 border border-neutral-800 p-10 rounded-2xl shadow-xl">
+            <h1 class="text-3xl font-semibold text-white mb-3 text-center">Frylow Installment Generator</h1>
+            <p class="text-neutral-400 text-center mb-8">Split a payment into two equal installments with ease.</p>
+
+            <form id="payment-form" class="space-y-6">
+                <div>
+                    <label for="email" class="block text-sm text-white mb-2">Customer Email</label>
+                    <input type="email" id="email" required placeholder="customer@example.com" class="w-full px-4 py-3 rounded-lg bg-neutral-800 text-white border border-neutral-700 placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-green-500" />
+                </div>
+
+                <div>
+                    <label for="amount" class="block text-sm text-white mb-2">Total Amount (USD)</label>
+                    <input type="number" id="amount" min="0.01" step="0.01" required placeholder="1000" class="w-full px-4 py-3 rounded-lg bg-neutral-800 text-white border border-neutral-700 placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-green-500" />
+                </div>
+
+                <div>
+                    <label for="description" class="block text-sm text-white mb-2">Product Description</label>
+                    <input type="text" id="description" placeholder="Payment for services" class="w-full px-4 py-3 rounded-lg bg-neutral-800 text-white border border-neutral-700 placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-green-500" />
+                </div>
+
+                <button id="submit-button" type="submit" class="w-full py-3 rounded-lg bg-green-600 hover:bg-green-700 text-white font-semibold transition-colors mt-4">
+                    Create Installment Plan
+                </button>
+            </form>
+
+            <div id="response" class="mt-8 text-sm hidden p-5 rounded-lg"></div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('payment-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const submitButton = document.getElementById('submit-button');
+            const responseDiv = document.getElementById('response');
+
+            submitButton.disabled = true;
+            submitButton.textContent = 'Creating...';
+
+            try {
+                const response = await fetch('/create-installment-plan', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: document.getElementById('email').value,
+                        amount: document.getElementById('amount').value * 100,
+                        description: document.getElementById('description').value,
+                    }),
+                });
+
+                const result = await response.json();
+                responseDiv.style.display = 'block';
+
+                if (result.success) {
+                    responseDiv.className = 'mt-8 text-sm bg-green-600/20 text-green-300 p-5 rounded-lg';
+                    responseDiv.innerHTML = `
+                        <strong>Success!</strong><br>
+                        Created two installments of $${(result.amount_per_installment / 100).toFixed(2)} each.<br>
+                        First Invoice ID: ${result.first_invoice}<br>
+                        Second Invoice ID: ${result.second_invoice}<br>
+                        Please check your stripe to manage payments.
+                    `;
+                } else {
+                    responseDiv.className = 'mt-8 text-sm bg-red-600/20 text-red-300 p-5 rounded-lg';
+                    responseDiv.textContent = `Error: ${result.error}`;
+                }
+            } catch (error) {
+                responseDiv.style.display = 'block';
+                responseDiv.className = 'mt-8 text-sm bg-red-600/20 text-red-300 p-5 rounded-lg';
+                responseDiv.textContent = `Error: ${error.message}`;
+            }
+
+            submitButton.disabled = false;
+            submitButton.textContent = 'Create Installment Plan';
+        });
+    </script>
+</body>
+
+</html>
